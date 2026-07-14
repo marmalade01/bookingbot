@@ -187,11 +187,19 @@ def fetch_available_slots(config, day):
 
 
 def send_telegram(config, text):
-    post_json(
-        f"https://api.telegram.org/bot{config['telegram_token']}/sendMessage",
-        {"chat_id": config["telegram_chat_id"], "text": text},
-        {},
-    )
+    """telegram_chat_id가 문자열 하나든 리스트든 모두 지원한다."""
+    chat_ids = config["telegram_chat_id"]
+    if not isinstance(chat_ids, list):
+        chat_ids = [chat_ids]
+    for chat_id in chat_ids:
+        try:
+            post_json(
+                f"https://api.telegram.org/bot{config['telegram_token']}/sendMessage",
+                {"chat_id": chat_id, "text": text},
+                {},
+            )
+        except Exception as e:  # 한 명 실패해도 나머지에겐 발송
+            log(f"텔레그램 발송 실패 (chat_id={chat_id}): {e}")
 
 
 def format_new_slots(new_by_date):

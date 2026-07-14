@@ -1,6 +1,6 @@
 {
   "telegram_token": "여기에_봇_토큰_입력",
-  "telegram_chat_id": "여기에_chat_id_입력",
+  "telegram_chat_id": ["여기에_chat_id_입력", "여러명이면_리스트로_추가"],
   "business_type_id": 13,
   "business_id": "1359557",
   "biz_item_id": "6566444",
