@@ -225,6 +225,41 @@ def save_state(state):
     )
 
 
+def ping_healthcheck(config):
+    """검사 성공마다 healthchecks.io에 생존 신호를 보낸다.
+
+    신호가 끊기면 healthchecks.io가 대신 '다운됨' 알림을 보낸다 (죽은
+    프로그램은 스스로 알릴 수 없으므로 외부 감시가 필요).
+    """
+    url = config.get("healthcheck_url")
+    if not url:
+        return
+    try:
+        urllib.request.urlopen(url, timeout=10)
+    except Exception:
+        pass  # 감시 서비스 쪽 일시 장애가 본 기능을 막으면 안 됨
+
+
+def maybe_send_heartbeat(config, state):
+    """heartbeat_hour시 이후 첫 검사 때 하루 1회 생존 신고를 보낸다.
+
+    이 메시지가 매일 오지 않으면 서버/스크립트에 문제가 생긴 것.
+    """
+    hour = config.get("heartbeat_hour")
+    if hour is None:
+        return
+    now = datetime.now()
+    today_key = f"{now.date():%Y-%m-%d}"
+    if now.hour >= hour and state.get("last_heartbeat_date") != today_key:
+        state["last_heartbeat_date"] = today_key
+        total = sum(len(slots) for slots in state["available"].values())
+        send_telegram(
+            config,
+            f"💓 [{config['place_name']}] 감시 정상 작동 중 "
+            f"(예약 가능 슬롯 {total}개)",
+        )
+
+
 def check_once(config):
     state = load_state()
     first_run = state is None
@@ -259,6 +294,7 @@ def check_once(config):
     state["available"] = {
         day: slots for day, slots in state["available"].items() if day >= today_key
     }
+    maybe_send_heartbeat(config, state)
     save_state(state)
 
     if first_run:
@@ -295,6 +331,7 @@ def main():
         try:
             check_once(config)
             consecutive_failures = 0
+            ping_healthcheck(config)
         except Exception as e:  # 네트워크/스키마 변경 등 어떤 실패든 기록
             consecutive_failures += 1
             log(f"검사 실패({consecutive_failures}회 연속): {e}")

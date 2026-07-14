@@ -9,5 +9,7 @@
   "min_lead_days": 1,
   "watch_start_hour": 9,
   "watch_end_hour": 20,
-  "interval_seconds": 120
+  "interval_seconds": 120,
+  "heartbeat_hour": null,
+  "healthcheck_url": null
 }
