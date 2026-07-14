@@ -1,4 +1,4 @@
-# 서버에 코드 업로드 + 서비스 재시작 (더블클릭 불가 — PowerShell에서 실행)
+﻿# 서버에 코드 업로드 + 서비스 재시작 (더블클릭 불가 — PowerShell에서 실행)
 # 사용법: PowerShell에서  .\redeploy.ps1
 
 $KEY = "C:\Users\Seadronix\Desktop\김주영\qa 자동화 tool\클라우드 오라클 ssh key\oracle ssh key(amd)\ssh-key-2026-01-22.key"
