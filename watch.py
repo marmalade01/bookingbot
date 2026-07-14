@@ -186,9 +186,10 @@ def fetch_available_slots(config, day):
     return available
 
 
-def send_telegram(config, text):
-    """telegram_chat_id가 문자열 하나든 리스트든 모두 지원한다."""
-    chat_ids = config["telegram_chat_id"]
+def send_telegram(config, text, chat_ids=None):
+    """chat_ids 미지정 시 telegram_chat_id로 발송. 문자열/리스트 모두 지원."""
+    if chat_ids is None:
+        chat_ids = config["telegram_chat_id"]
     if not isinstance(chat_ids, list):
         chat_ids = [chat_ids]
     for chat_id in chat_ids:
@@ -257,6 +258,7 @@ def maybe_send_heartbeat(config, state):
             config,
             f"💓 [{config['place_name']}] 감시 정상 작동 중 "
             f"(예약 가능 슬롯 {total}개)",
+            chat_ids=config.get("heartbeat_chat_id"),  # 미지정 시 기본 수신자
         )
 
 
