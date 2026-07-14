@@ -1,0 +1,12 @@
+# 비밀 정보 (텔레그램 봇 토큰) — 절대 커밋 금지
+config.json
+
+# 런타임 산출물
+state.json
+last_slots.json
+watch.log
+__pycache__/
+
+# SSH 키
+*.key
+*.pem

@@ -1,0 +1,13 @@
+{
+  "telegram_token": "여기에_봇_토큰_입력",
+  "telegram_chat_id": "여기에_chat_id_입력",
+  "business_type_id": 13,
+  "business_id": "1359557",
+  "biz_item_id": "6566444",
+  "place_name": "감시 대상 이름",
+  "exclude_weekdays": ["수", "금"],
+  "min_lead_days": 1,
+  "watch_start_hour": 9,
+  "watch_end_hour": 20,
+  "interval_seconds": 120
+}

@@ -1,0 +1,16 @@
+[Unit]
+Description=Naver booking watch (telegram alert)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/naver-booking-watch
+ExecStart=/usr/bin/python3 /home/ubuntu/naver-booking-watch/watch.py
+Restart=always
+RestartSec=30
+Environment=PYTHONIOENCODING=utf-8
+
+[Install]
+WantedBy=multi-user.target
