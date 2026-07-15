@@ -109,11 +109,17 @@ def graphql(config, operation_name, query, start, end):
     return data["data"]["schedule"]["bizItemSchedule"]
 
 
-def booking_url(config):
-    return (
+def booking_url(config, start_date=None):
+    # area/lang/theme 파라미터가 없으면 네이버가 "운영하지 않는 예약 페이지"로
+    # 표시하므로 반드시 붙인다. start_date를 주면 해당 날짜로 달력이 열린다.
+    url = (
         f"https://m.booking.naver.com/booking/{config['business_type_id']}"
         f"/bizes/{config['business_id']}/items/{config['biz_item_id']}"
+        f"?area=ple&lang=ko&theme=place"
     )
+    if start_date:
+        url += f"&startDate={start_date}"
+    return url
 
 
 def end_of_next_month(today):
@@ -310,10 +316,11 @@ def check_once(config):
     elif new_by_date:
         count = sum(len(v) for v in new_by_date.values())
         log(f"새 슬롯 {count}개 발견: {new_by_date}")
+        earliest = min(new_by_date)  # 새 자리가 난 가장 이른 날짜로 달력 열기
         send_telegram(
             config,
             f"🔔 [{config['place_name']}] 예약 자리 발견!\n\n"
-            f"{format_new_slots(new_by_date)}\n\n{booking_url(config)}",
+            f"{format_new_slots(new_by_date)}\n\n{booking_url(config, start_date=earliest)}",
         )
     else:
         log(f"변화 없음 (상세 조회한 날짜 {len(changed_days)}개)")
