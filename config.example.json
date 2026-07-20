@@ -11,6 +11,7 @@
   "watch_start_hour": 9,
   "watch_end_hour": 20,
   "interval_seconds": 120,
+  "watch_range_days": 75,
   "heartbeat_hour": null,
   "heartbeat_chat_id": null,
   "healthcheck_url": null

@@ -140,19 +140,23 @@ def is_watched_date(config, day):
 
 
 def fetch_day_summaries(config):
-    """오늘~다음달 말까지 날짜별 집계를 요청 1번으로 가져온다.
+    """오늘~감시 범위 끝까지 날짜별 집계와 예약가능(오픈) 여부를 1번에 가져온다.
 
-    반환: {"YYYY-MM-DD": "stock/booked/occupied" 시그니처}
+    반환: (
+      summaries: {"YYYY-MM-DD": "stock/booked/occupied" 시그니처},
+      bookable:  {"YYYY-MM-DD": isBusinessDay(bool)}   # 예약 창이 열린 날짜인지
+    )
     """
     today = datetime.now().date()
-    until = end_of_next_month(today)
+    until = today + timedelta(days=config.get("watch_range_days", 75))
     daily = fetch_daily_range(config, today, until)
-    summaries = {}
+    summaries, bookable = {}, {}
     for key, day in daily.items():
         summaries[key] = (
             f"{day['stock']}/{day['bookingCount']}/{day['occupiedBookingCount']}"
         )
-    return summaries
+        bookable[key] = bool(day.get("isBusinessDay"))
+    return summaries, bookable
 
 
 def fetch_daily_range(config, start_date, end_date):
@@ -273,14 +277,28 @@ def maybe_send_heartbeat(config, state):
         )
 
 
+def detect_newly_opened_dates(bookable, state):
+    """직전엔 잠겨(False) 있다가 이번에 열린(True) 날짜 목록을 반환한다.
+
+    이전에 관측된 적 없는(감시 범위에 새로 들어온) 날짜는 오픈으로 치지 않는다
+    (매일 범위가 하루씩 밀리는 것과 구분).
+    """
+    previous = state.get("bookable", {})
+    return sorted(
+        day for day, is_open in bookable.items()
+        if is_open and previous.get(day) is False
+    )
+
+
 def check_once(config):
     state = load_state()
     first_run = state is None
     if first_run:
-        state = {"day_summaries": {}, "available": {}}
+        state = {"day_summaries": {}, "available": {}, "bookable": {}}
 
-    summaries = fetch_day_summaries(config)
+    summaries, bookable = fetch_day_summaries(config)
     today_key = f"{datetime.now().date():%Y-%m-%d}"
+    newly_opened = detect_newly_opened_dates(bookable, state)
 
     # 감시 대상: 휴무 요일 제외, 집계가 직전과 달라진 날짜만 상세 조회
     changed_days = [
@@ -304,6 +322,7 @@ def check_once(config):
 
     # 지난 날짜 상태 정리
     state["day_summaries"] = summaries
+    state["bookable"] = bookable
     state["available"] = {
         day: slots for day, slots in state["available"].items() if day >= today_key
     }
@@ -318,7 +337,22 @@ def check_once(config):
             f"✅ [{config['place_name']}] 감시 시작\n"
             f"현재 예약 가능 슬롯 {total}개. 취소표/월 오픈이 생기면 알려드릴게요.",
         )
-    elif new_by_date:
+        return
+
+    # 예약 오픈 감지: 잠겨 있던 날짜가 새로 열림 (월 오픈 등) → 별도 알림
+    if newly_opened:
+        log(f"예약 오픈 감지: {len(newly_opened)}일 ({newly_opened[0]}~{newly_opened[-1]})")
+        first = datetime.strptime(newly_opened[0], "%Y-%m-%d")
+        last = datetime.strptime(newly_opened[-1], "%Y-%m-%d")
+        send_telegram(
+            config,
+            f"🗓️ [{config['place_name']}] 예약 오픈!\n\n"
+            f"{first.month}/{first.day}~{last.month}/{last.day} "
+            f"날짜 {len(newly_opened)}일이 새로 열렸어요.\n"
+            f"지금 들어가서 원하는 날짜·시간을 선점하세요!\n\n{place_link(config)}",
+        )
+
+    if new_by_date:
         count = sum(len(v) for v in new_by_date.values())
         log(f"새 슬롯 {count}개 발견: {new_by_date}")
         send_telegram(
@@ -326,7 +360,7 @@ def check_once(config):
             f"🔔 [{config['place_name']}] 예약 자리 발견!\n\n"
             f"{format_new_slots(new_by_date)}\n\n{place_link(config)}",
         )
-    else:
+    elif not newly_opened:
         log(f"변화 없음 (상세 조회한 날짜 {len(changed_days)}개)")
 
 

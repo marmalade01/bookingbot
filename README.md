@@ -4,13 +4,15 @@
 
 ## 동작 방식
 
-1. 2분(`interval_seconds`)마다 daily 쿼리 **1번**으로 오늘~다음달 말까지 날짜별 집계(재고/예약수) 조회
+1. `interval_seconds`마다 daily 쿼리 **1번**으로 오늘~`watch_range_days`일 뒤까지 날짜별 집계(재고/예약수) + 예약가능 여부(`isBusinessDay`) 조회
 2. 직전 검사와 집계가 달라진 날짜만 hourly 쿼리로 상세 조회 (평소엔 요청 1회로 끝)
 3. 실제 진료 슬롯(`isUnitBusinessDay=true`) 중 `unitStock - unitBookingCount - occupiedBookingCount > 0`인 슬롯만 예약 가능으로 판정
-4. 직전 상태(`state.json`)에 없던 새 슬롯만 텔레그램 발송
-   - **취소표**: 마감(4/4) 슬롯이 취소로 풀리는 순간
-   - **월 오픈**: 다음달 마감 처리 슬롯이 일괄 해제되는 순간 (같은 원리로 감지됨)
+4. 두 종류의 알림을 발송:
+   - 🔔 **취소표**: 마감 슬롯이 취소로 풀려 직전 상태에 없던 새 슬롯이 생긴 순간
+   - 🗓️ **예약 오픈**: 잠겨 있던(`isBusinessDay=false`) 날짜가 새로 열리는 순간(월 오픈 등). 여러 날이 한꺼번에 열리므로, 알림받고 들어가 원하는 시간을 선점하기 좋음
 5. 5회 연속 조회 실패 시(네이버 API 변경/차단 등) 에러 알림 1회 발송
+
+알림 링크는 딥링크 대신 실제 예약이 열리는 네이버 플레이스 예약 화면(`m.place.naver.com/hospital/{place_id}/home`)으로 보낸다.
 
 ## 설정 (config.json)
 
