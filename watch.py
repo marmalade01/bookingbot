@@ -121,9 +121,10 @@ def place_link(config):
     """사용자에게 보낼 예약 링크.
 
     m.booking 딥링크는 플레이스를 거치지 않고 직접 열면 "운영하지 않는 예약
-    페이지"가 뜰 때가 많다. 실제 예약이 열리는 네이버 플레이스 예약 탭으로 보낸다.
+    페이지"가 뜰 때가 많다. 사용자가 실제로 예약할 때 쓰는 플레이스 홈(예약 버튼이
+    노출되는 화면)으로 보낸다.
     """
-    return f"https://m.place.naver.com/hospital/{config['place_id']}/booking"
+    return f"https://m.place.naver.com/hospital/{config['place_id']}/home?entry=pll"
 
 
 def end_of_next_month(today):
