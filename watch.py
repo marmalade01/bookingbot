@@ -229,6 +229,19 @@ def format_new_slots(new_by_date):
     return "\n".join(lines)
 
 
+def format_slot_keys(keys):
+    """'YYYY-MM-DD HH:MM' 키 목록을 날짜별로 묶어 표시 (마감 알림용)."""
+    by_date = {}
+    for key in sorted(keys):
+        day, hhmm = key.split(" ")
+        by_date.setdefault(day, []).append(hhmm)
+    lines = []
+    for day in sorted(by_date):
+        weekday = WEEKDAY_KO[datetime.strptime(day, "%Y-%m-%d").weekday()]
+        lines.append(f"📅 {day}({weekday}) {', '.join(by_date[day])}")
+    return "\n".join(lines)
+
+
 def load_state():
     if STATE_FILE.exists():
         return json.loads(STATE_FILE.read_text(encoding="utf-8"))
@@ -294,7 +307,7 @@ def check_once(config):
     state = load_state()
     first_run = state is None
     if first_run:
-        state = {"day_summaries": {}, "available": {}, "bookable": {}}
+        state = {"day_summaries": {}, "available": {}, "bookable": {}, "alerted": []}
 
     summaries, bookable = fetch_day_summaries(config)
     today_key = f"{datetime.now().date():%Y-%m-%d}"
@@ -326,6 +339,20 @@ def check_once(config):
     state["available"] = {
         day: slots for day, slots in state["available"].items() if day >= today_key
     }
+
+    # 알림 보낸 슬롯 추적: 알렸던 자리가 다시 차면 "마감" 후속 알림.
+    # (지난 날짜는 조용히 정리, 이번에 새로 알린 자리는 추적 목록에 추가)
+    current_keys = {
+        f"{day} {t}" for day, slots in state["available"].items() for t in slots
+    }
+    alerted = {k for k in state.get("alerted", []) if k.split(" ")[0] >= today_key}
+    for day, times in new_by_date.items():
+        for t in times:
+            alerted.add(f"{day} {t}")
+    gone_keys = sorted(k for k in alerted if k not in current_keys)
+    alerted -= set(gone_keys)
+    state["alerted"] = sorted(alerted)
+
     maybe_send_heartbeat(config, state)
     save_state(state)
 
@@ -360,7 +387,17 @@ def check_once(config):
             f"🔔 [{config['place_name']}] 예약 자리 발견!\n\n"
             f"{format_new_slots(new_by_date)}\n\n{place_link(config)}",
         )
-    elif not newly_opened:
+
+    # 알렸던 자리가 다시 마감된 경우 후속 알림 (안 오면 아직 살아있다는 뜻)
+    if gone_keys:
+        log(f"마감된 슬롯 {len(gone_keys)}개: {gone_keys}")
+        send_telegram(
+            config,
+            f"🔕 [{config['place_name']}] 방금 그 자리 마감됐어요\n\n"
+            f"{format_slot_keys(gone_keys)}",
+        )
+
+    if not new_by_date and not newly_opened and not gone_keys:
         log(f"변화 없음 (상세 조회한 날짜 {len(changed_days)}개)")
 
 
