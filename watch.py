@@ -109,17 +109,21 @@ def graphql(config, operation_name, query, start, end):
     return data["data"]["schedule"]["bizItemSchedule"]
 
 
-def booking_url(config, start_date=None):
-    # area/lang/theme 파라미터가 없으면 네이버가 "운영하지 않는 예약 페이지"로
-    # 표시하므로 반드시 붙인다. start_date를 주면 해당 날짜로 달력이 열린다.
-    url = (
+def booking_url(config):
+    """GraphQL 요청의 Referer 용 URL (앱이 보내는 형태)."""
+    return (
         f"https://m.booking.naver.com/booking/{config['business_type_id']}"
         f"/bizes/{config['business_id']}/items/{config['biz_item_id']}"
-        f"?area=ple&lang=ko&theme=place"
     )
-    if start_date:
-        url += f"&startDate={start_date}"
-    return url
+
+
+def place_link(config):
+    """사용자에게 보낼 예약 링크.
+
+    m.booking 딥링크는 플레이스를 거치지 않고 직접 열면 "운영하지 않는 예약
+    페이지"가 뜰 때가 많다. 실제 예약이 열리는 네이버 플레이스 예약 탭으로 보낸다.
+    """
+    return f"https://m.place.naver.com/hospital/{config['place_id']}/booking"
 
 
 def end_of_next_month(today):
@@ -316,11 +320,10 @@ def check_once(config):
     elif new_by_date:
         count = sum(len(v) for v in new_by_date.values())
         log(f"새 슬롯 {count}개 발견: {new_by_date}")
-        earliest = min(new_by_date)  # 새 자리가 난 가장 이른 날짜로 달력 열기
         send_telegram(
             config,
             f"🔔 [{config['place_name']}] 예약 자리 발견!\n\n"
-            f"{format_new_slots(new_by_date)}\n\n{booking_url(config, start_date=earliest)}",
+            f"{format_new_slots(new_by_date)}\n\n{place_link(config)}",
         )
     else:
         log(f"변화 없음 (상세 조회한 날짜 {len(changed_days)}개)")
