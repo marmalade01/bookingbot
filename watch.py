@@ -182,14 +182,27 @@ def fetch_available_slots(config, day):
     now = datetime.now()
     # 당일 예약을 안 받는 업체는 오늘 슬롯이 화면에 안 뜨므로 min_lead_days=1로 제외
     min_bookable_date = now.date() + timedelta(days=config.get("min_lead_days", 1))
+    valid_times = set(config.get("valid_slot_times", []))
     available = {}
     for slot in result.get("hourly") or []:
-        if not (slot["isUnitBusinessDay"] and slot["isUnitSaleDay"]):
-            continue  # 진료 시간이 아닌 슬롯
         start = datetime.strptime(slot["unitStartTime"], "%Y-%m-%d %H:%M:%S")
+        hhmm = f"{start:%H:%M}"
+
+        # 실제 예약 가능 시간대인지 판정.
+        # isUnitBusinessDay 플래그는 시간이 지나며 밀리는(drift) 버그가 있어 신뢰 불가.
+        # 대신 (1) config에 고정한 진료 시간대 목록과 (2) 그 날 실제로 운영되는
+        # 슬롯인지(예약이 하나라도 찬 적 있는지)로 판단한다.
+        if valid_times:
+            if hhmm not in valid_times:
+                continue  # 클리닉 진료 시간대가 아님 (예: 15:30, 새벽/심야)
+            if slot["unitBookingCount"] <= 0:
+                continue  # 그 날 운영 안 하는 시간(예: 토요일 11:00, 휴진)
+        else:
+            # 고정 목록 미설정 시: 예약이 찬 적 있는 슬롯만 (drift 플래그 대신)
+            if slot["unitBookingCount"] <= 0:
+                continue
+
         if start <= now or start.date() < min_bookable_date:
-            continue
-        if not (config["watch_start_hour"] <= start.hour < config["watch_end_hour"]):
             continue
         remaining = (
             slot["unitStock"]
@@ -197,7 +210,7 @@ def fetch_available_slots(config, day):
             - slot["occupiedBookingCount"]
         )
         if remaining > 0:
-            available[f"{start:%H:%M}"] = remaining
+            available[hhmm] = remaining
     return available
 
 

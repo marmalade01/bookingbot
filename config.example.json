@@ -8,6 +8,7 @@
   "place_name": "감시 대상 이름",
   "exclude_weekdays": ["수", "금"],
   "min_lead_days": 1,
+  "valid_slot_times": ["09:30", "10:00", "10:30", "11:00", "13:30", "14:00", "14:30", "15:00"],
   "watch_start_hour": 9,
   "watch_end_hour": 20,
   "interval_seconds": 120,
