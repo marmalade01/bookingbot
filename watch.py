@@ -117,14 +117,20 @@ def booking_url(config):
     )
 
 
-def place_link(config):
+def place_link(config, start_date=None):
     """사용자에게 보낼 예약 링크.
 
-    m.booking 딥링크는 플레이스를 거치지 않고 직접 열면 "운영하지 않는 예약
-    페이지"가 뜰 때가 많다. 사용자가 실제로 예약할 때 쓰는 플레이스 홈(예약 버튼이
-    노출되는 화면)으로 보낸다.
+    area=pll 파라미터로 예약 달력이 바로 열린다 (area=ple은 "운영하지 않는
+    예약 페이지"가 뜨는 경우가 있었음). start_date를 주면 그 날짜로 열린다.
     """
-    return f"https://m.place.naver.com/hospital/{config['place_id']}/home?entry=pll"
+    url = (
+        f"https://m.booking.naver.com/booking/{config['business_type_id']}"
+        f"/bizes/{config['business_id']}/items/{config['biz_item_id']}"
+        f"?area=pll&lang=ko&theme=place"
+    )
+    if start_date:
+        url += f"&startDate={start_date}"
+    return url
 
 
 def end_of_next_month(today):
@@ -389,7 +395,8 @@ def check_once(config):
             f"🗓️ [{config['place_name']}] 예약 오픈!\n\n"
             f"{first.month}/{first.day}~{last.month}/{last.day} "
             f"날짜 {len(newly_opened)}일이 새로 열렸어요.\n"
-            f"지금 들어가서 원하는 날짜·시간을 선점하세요!\n\n{place_link(config)}",
+            f"지금 들어가서 원하는 날짜·시간을 선점하세요!\n\n"
+            f"{place_link(config, start_date=newly_opened[0])}",
         )
 
     if new_by_date:
@@ -398,7 +405,8 @@ def check_once(config):
         send_telegram(
             config,
             f"🔔 [{config['place_name']}] 예약 자리 발견!\n\n"
-            f"{format_new_slots(new_by_date)}\n\n{place_link(config)}",
+            f"{format_new_slots(new_by_date)}\n\n"
+            f"{place_link(config, start_date=min(new_by_date))}",
         )
 
     # 알렸던 자리가 다시 마감된 경우 후속 알림 (안 오면 아직 살아있다는 뜻)
