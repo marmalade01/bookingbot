@@ -118,19 +118,13 @@ def booking_url(config):
 
 
 def place_link(config, start_date=None):
-    """사용자에게 보낼 예약 링크.
+    """사용자에게 보낼 예약 링크 (네이버 플레이스 예약 홈).
 
-    area=pll 파라미터로 예약 달력이 바로 열린다 (area=ple은 "운영하지 않는
-    예약 페이지"가 뜨는 경우가 있었음). start_date를 주면 그 날짜로 열린다.
+    m.booking 딥링크(area=ple/pll)는 직접 열면 "운영하지 않는 예약 페이지"가
+    뜨는 빈도가 높아, 실제 예약이 열리는 플레이스 홈으로 보낸다.
+    (start_date는 이 경로에선 지원되지 않아 무시됨)
     """
-    url = (
-        f"https://m.booking.naver.com/booking/{config['business_type_id']}"
-        f"/bizes/{config['business_id']}/items/{config['biz_item_id']}"
-        f"?area=pll&lang=ko&theme=place"
-    )
-    if start_date:
-        url += f"&startDate={start_date}"
-    return url
+    return f"https://m.place.naver.com/hospital/{config['place_id']}/home?entry=pll"
 
 
 def end_of_next_month(today):
